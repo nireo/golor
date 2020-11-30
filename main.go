@@ -11,7 +11,8 @@ import (
 func main() {
 	router := fasthttprouter.New()
 	router.POST("/api/img", api.UploadImage)
-	router.GET("/api/colors", api.GetColorsInImage)
+	router.GET("/api/colors", api.GetImageColors)
+	router.GET("/", api.ServeImageUploadPage)
 
 	if err := fasthttp.ListenAndServe("localhost:8080", router.Handler); err != nil {
 		log.Fatalf("Error in ListenAndServe")

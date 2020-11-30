@@ -2,6 +2,7 @@ package api
 
 import (
 	"fmt"
+	"html/template"
 	"strings"
 
 	"github.com/EdlinOrg/prominentcolor"
@@ -47,7 +48,7 @@ func GetImageColors(ctx *fasthttp.RequestCtx) {
 	filename := string(ctx.QueryArgs().Peek("file"))
 
 	// load the image, by first checking if the image exists and then decoding it!
-	img, err := LoadImage(fmt.Sprintf("tmp/%s", filename))
+	img, err := utils.LoadImage(fmt.Sprintf("tmp/%s", filename))
 	if err != nil {
 		ctx.Error(err.Error(), fasthttp.StatusInternalServerError)
 		return
@@ -56,6 +57,8 @@ func GetImageColors(ctx *fasthttp.RequestCtx) {
 	// use a library to easily find all the color values fast
 	colors, err := prominentcolor.KmeansWithArgs(prominentcolor.ArgumentNoCropping, img)
 	if err != nil {
+		// do not display a fasthttp.StatusMessage, since the error message is quite important,
+		// for example for debugging purposes.
 		ctx.Error(err.Error(), fasthttp.StatusInternalServerError)
 		return
 	}
@@ -63,10 +66,31 @@ func GetImageColors(ctx *fasthttp.RequestCtx) {
 	// format the content
 	var content string
 	for index, color := range colors {
+		// concat a list item, which has the hex value of the color
 		content += fmt.Sprintf("%d. #%s\n", index, color.AsString())
 	}
 
 	// display the user with the most prominant colors
 	ctx.Response.SetStatusCode(fasthttp.StatusOK)
 	ctx.Response.AppendBody([]byte(content))
+}
+
+// ServeImageUploadPage servers the html of the page, from which the user can upload images,
+// and then get redirected to the color results page.
+func ServeImageUploadPage(ctx *fasthttp.RequestCtx) {
+	// Set the right content type, since without the right content type the html won't render
+	// properly.
+	ctx.Response.Header.Set("Content-Type", "text/html")
+
+	// Parse the upload page into golang template, which we can add more data to
+	tmpl := template.Must(template.ParseFiles("./pages/upload.html"))
+	if err := tmpl.Execute(ctx, nil); err != nil {
+		// Since we cannot execute the template we just return a internal server error, since
+		// something must be very wrong.
+		ctx.Error(
+			fasthttp.StatusMessage(fasthttp.StatusInternalServerError),
+			fasthttp.StatusInternalServerError,
+		)
+		return
+	}
 }

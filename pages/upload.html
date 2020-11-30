@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html>
+  <header>
+    <title>golor - upload</title>
+  </header>
+  <body>
+    <h1>golor</h1>
+    <form method="POST" action="/api/img" enctype="multipart/form-data">
+      <div>
+        <label for="choose-file" style="background-color: gray"
+          >Choose file</label
+        >
+        <input style="display: none" type="file" id="choose-file" name="file" />
+      </div>
+      <button type="submit">Submit</button>
+    </form>
+  </body>
+</html>
