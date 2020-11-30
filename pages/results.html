@@ -1,0 +1,12 @@
+<!DOCTYPE html>
+<html>
+  <header>
+    <title>golor - results</title>
+  </header>
+  <body>
+    <h1>golor results for {{ .Filename }}</h1>
+    {{ range .Colors }}
+    <li>{{ .Index }} #{{ .Color }}</li>
+    {{ end }}
+  </body>
+</html>

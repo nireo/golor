@@ -3,6 +3,7 @@ package api
 import (
 	"fmt"
 	"html/template"
+	"os"
 	"strings"
 
 	"github.com/EdlinOrg/prominentcolor"
@@ -40,6 +41,20 @@ func UploadImage(ctx *fasthttp.RequestCtx) {
 	ctx.Redirect(fmt.Sprintf("/api/colors?file=%s.%s", uid, extension), fasthttp.StatusMovedPermanently)
 }
 
+// ColorResultPage holds all the values that are the most prominent colors on an image.
+// We need to store it in a struct, since golang templates need structs as data.
+type ColorResultPage struct {
+	// Colors holds all the index values and hex values of the most prominent colors
+	Colors   []ColorItem
+	Filename string
+}
+
+// ColorItem stores the index and the color of a single color in a image.
+type ColorItem struct {
+	Index int
+	Color string
+}
+
 // GetImageColors is a fasthttp get request handler, which gets redirected to by
 // the UploadImage handler. GetImageColors handles the decoding an image and finding the most prominant
 // colors in an image.
@@ -63,16 +78,39 @@ func GetImageColors(ctx *fasthttp.RequestCtx) {
 		return
 	}
 
-	// format the content
-	var content string
+	// Construct the ColorResultPage struct to store all the needed data.
+	var results ColorResultPage
 	for index, color := range colors {
-		// concat a list item, which has the hex value of the color
-		content += fmt.Sprintf("%d. #%s\n", index, color.AsString())
+		results.Colors = append(results.Colors, ColorItem{
+			Index: index + 1,
+			Color: color.AsString(),
+		})
 	}
 
-	// display the user with the most prominant colors
-	ctx.Response.SetStatusCode(fasthttp.StatusOK)
-	ctx.Response.AppendBody([]byte(content))
+	results.Filename = filename
+
+	// Set the correct Content-Type so that the html template renders corrently.
+	ctx.Response.Header.Set("Content-Type", "text/html")
+
+	// Parse the template file and add the ColorResultPage struct data to the template,
+	// which the results.html file specifically renders.
+	tmpl := template.Must(template.ParseFiles("./pages/results.html"))
+	if err := tmpl.Execute(ctx, results); err != nil {
+		ctx.Error(
+			fasthttp.StatusMessage(fasthttp.StatusInternalServerError),
+			fasthttp.StatusInternalServerError,
+		)
+		return
+	}
+
+	// Remove the file since we don't want to store it.
+	if err := os.Remove(fmt.Sprintf("./tmp/%s", filename)); err != nil {
+		ctx.Error(
+			fasthttp.StatusMessage(fasthttp.StatusInternalServerError),
+			fasthttp.StatusInternalServerError,
+		)
+		return
+	}
 }
 
 // ServeImageUploadPage servers the html of the page, from which the user can upload images,
